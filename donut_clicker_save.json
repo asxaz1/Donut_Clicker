@@ -1,0 +1,32 @@
+{
+    "points": 30,
+    "max_donuts": 30,
+    "max_dps": 0,
+    "time_played": 9.848,
+    "eater_count": 0,
+    "eater_premium_count": 0,
+    "donut_house_count": 0,
+    "donut_eating_hall_count": 0,
+    "total_donuts_earned": 30,
+    "total_time_played": 63.00600000000054,
+    "store_unlocked": false,
+    "eating_power_level": 0,
+    "gastro_pill_unlocked": false,
+    "sound_enabled": true,
+    "sound_volume": 0.5,
+    "music_enabled": true,
+    "music_volume": 0.3,
+    "achievements": {
+        "first_donut": true,
+        "donut_collector": false,
+        "donut_hoarder": false,
+        "donut_master": false,
+        "donut_legend": false,
+        "donut_god": false,
+        "donut_millionaire": false,
+        "donut_billionaire": false,
+        "donut_trillionaire": false
+    },
+    "last_exit_time": "2026-02-26T16:24:35.957003",
+    "exit_dps": 0.0
+}

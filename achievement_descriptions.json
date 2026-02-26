@@ -1,0 +1,65 @@
+{
+    "first_donut": {
+        "description": [
+            "Tutaj wpisz opis pierwszego osiagnięcia",
+            "Możesz dodać kolejne linie",
+            "Maksymalnie 3-4 linie!"
+        ]
+    },
+    "donut_collector": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_hoarder": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_master": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_legend": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_god": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_millionaire": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_billionaire": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    },
+    "donut_trillionaire": {
+        "description": [
+            "",
+            "",
+            ""
+        ]
+    }
+}
