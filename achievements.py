@@ -81,25 +81,25 @@ ACHIEVEMENTS: List[Achievement] = [
     Achievement(
         id="donut_god",
         name="Donut God",
-        description="Earn 1,000,000 total donuts",
+        description="Earn 1M total donuts",
         requirement=1000000
     ),
     Achievement(
         id="donut_millionaire",
         name="Donut Millionaire",
-        description="Earn 10,000,000 total donuts",
+        description="Earn 10M total donuts",
         requirement=10000000
     ),
     Achievement(
         id="donut_billionaire",
         name="Donut Billionaire",
-        description="Earn 1,000,000,000 total donuts",
+        description="Earn 1B total donuts",
         requirement=1000000000
     ),
     Achievement(
         id="donut_trillionaire",
         name="Donut Trillionaire",
-        description="Earn 1,000,000,000,000 total donuts",
+        description="Earn 1T total donuts",
         requirement=1000000000000
     )
 ]

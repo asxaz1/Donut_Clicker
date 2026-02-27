@@ -1,65 +1,65 @@
 {
     "first_donut": {
         "description": [
-            "Tutaj wpisz opis pierwszego osiagnięcia",
-            "Możesz dodać kolejne linie",
-            "Maksymalnie 3-4 linie!"
+            "Earn 1 donut for the first time.",
+            "THe begining of your delicious journey!",
+            "Keep clicking to find out what is next!"
         ]
     },
     "donut_collector": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 100 donuts for the first time.",
+            "You have enough donuts to start selling them!",
+            "Congrats, but there is still a long way to go!"
         ]
     },
     "donut_hoarder": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 1000 donuts for the first time.",
+            "WOW! You are good at making those donuts!",
+            "Keep going higher and higher!"
         ]
     },
     "donut_master": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 10,000 donuts for the first time.",
+            "Now you are a true master of donuts!",
+            "Carry on selling those delicious treats!"
         ]
     },
     "donut_legend": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 100,000 donuts for the first time.",
+            "You are now a legend in the world of donuts!",
+            "Congratulations on your first 100k!"
         ]
     },
     "donut_god": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 1,000,000 donuts for the first time.",
+            "You are now a god of donuts!",
+            "There is no limit to your donut power!"
         ]
     },
     "donut_millionaire": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 10 million donuts for the first time.",
+            "You finally backed your first million donuts!",
+            "You becomed first multimillionare with donuts!"
         ]
     },
     "donut_billionaire": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 1 billion donuts for the first time.",
+            "Nothing to say, you are a billionaire now!",
+            "Now you can concure the world!"
         ]
     },
     "donut_trillionaire": {
         "description": [
-            "",
-            "",
-            ""
+            "Earn 1 trillion donuts for the first time.",
+            "Now can build unbetable donut imperium!",
+            "Is there anything else you can achieve?"
         ]
     }
 }
