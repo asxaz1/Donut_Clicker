@@ -17,7 +17,8 @@ BUILDING_TEXTURES = {
     "eater": None,              # Ścieżka do ikony Eater
     "eater_premium": None,      # Ścieżka do ikony Eater Premium
     "donut_house": None,        # Ścieżka do ikony Donut House
-    "donut_eating_hall": None   # Ścieżka do ikony Donut Eating Hall
+    "donut_eating_hall": None,   # Ścieżka do ikony Donut Eating Hall
+    "donut_co": None             # Ścieżka do ikony Donut Corporation
 }
 
 # ============================================
@@ -139,6 +140,14 @@ BUILDINGS = {
         dps=10.0,
         max_count=25,
         cost_multiplier=1.12
+    ),
+    "donut_co": Building(
+        id="donut_co",
+        name="Donut Corporation",
+        base_cost=1000000,
+        dps=100.0,
+        max_count=10,
+        cost_multiplier=1.08
     )
 }
 
