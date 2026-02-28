@@ -1,5 +1,5 @@
 # ============================================
-# Donut Clicker - Alpha 0.1.2
+# Donut Clicker - Alpha 0.1.3
 # System: 4 zakładki menu z ikonami
 # ============================================
 
@@ -35,7 +35,7 @@ pygame.init()
 
 WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Donut Clicker alpha 0.1.1")
+pygame.display.set_caption("Donut Clicker alpha 0.1.3")
 
 PINK_BG = (255, 200, 210)
 WHITE = (255, 255, 255)
@@ -67,7 +67,7 @@ def load_achievement_descriptions():
 achievement_descriptions = load_achievement_descriptions()
 
 def load_game():
-    global points, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
+    global points, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, 'r') as f:
@@ -80,6 +80,7 @@ def load_game():
                 eater_premium_count = data.get('eater_premium_count', 0)
                 donut_house_count = data.get('donut_house_count', data.get('eating_hall_count', 0))
                 donut_eating_hall_count = data.get('donut_eating_hall_count', 0)
+                donut_co_count = data.get('donut_co_count', 0)
                 total_donuts_earned = data.get('total_donuts_earned', 0)
                 total_time_played = data.get('total_time_played', 0)
                 store_unlocked = data.get('store_unlocked', False)
@@ -153,6 +154,7 @@ def save_game():
         'eater_premium_count': eater_premium_count,
         'donut_house_count': donut_house_count,
         'donut_eating_hall_count': donut_eating_hall_count,
+        'donut_co_count': donut_co_count,
         'total_donuts_earned': total_donuts_earned,
         'total_time_played': total_time_played,
         'store_unlocked': store_unlocked,
@@ -202,6 +204,11 @@ DONUT_EATING_HALL_MAX = 25
 DONUT_EATING_HALL_BASE_COST = 100000
 DONUT_EATING_HALL_DPS = 10.0
 
+donut_co_count = 0
+DONUT_CO_MAX = 10
+DONUT_CO_BASE_COST = 1000000
+DONUT_CO_DPS = 100.0
+
 store_unlocked = False
 STORE_COST = 500
 
@@ -219,7 +226,7 @@ idle_window_open = False
 show_achievement_notification = False
 achievement_to_show = None
 achievement_notification_timer = 0
-ACHIEVEMENT_NOTIFICATION_DURATION = 5000  # 5 sekund
+ACHIEVEMENT_NOTIFICATION_DURATION = 3000  # 3 sekundy
 
 # Zmienne dla okna szczegółów osiągnięcia
 achievement_detail_window_open = False
@@ -246,11 +253,14 @@ def get_donut_house_cost():
 def get_donut_eating_hall_cost():
     return int(DONUT_EATING_HALL_BASE_COST * (1.12 ** donut_eating_hall_count))
 
+def get_donut_co_cost():
+    return int(DONUT_CO_BASE_COST * (1.08 ** donut_co_count))
+
 def get_eating_power_cost():
     return int(EATING_POWER_BASE_COST * (1.08 ** eating_power_level))
 
 def get_total_dps():
-    return (eater_count * EATER_DPS) + (eater_premium_count * EATER_PREMIUM_DPS) + (donut_house_count * DONUT_HOUSE_DPS) + (donut_eating_hall_count * DONUT_EATING_HALL_DPS)
+    return (eater_count * EATER_DPS) + (eater_premium_count * EATER_PREMIUM_DPS) + (donut_house_count * DONUT_HOUSE_DPS) + (donut_eating_hall_count * DONUT_EATING_HALL_DPS) + (donut_co_count * DONUT_CO_DPS)
 
 def format_number(num):
     num = int(num)
@@ -262,12 +272,14 @@ def format_number(num):
         return f"{num / 1_000_000:.2f}M".rstrip('0').rstrip('.')
     elif num < 1_000_000_000_000:
         return f"{num / 1_000_000_000:.2f}B"
-    else:
+    elif num < 1_000_000_000_000_000:
         return f"{num / 1_000_000_000_000:.2f}T"
+    else:
+        return f"{num / 1_000_000_000_000_000:.2e}Qd"
 
 # ============================================
 # WRAPPER FUNCTIONS - Compatibility ze starym kodem
-# ============================================
+ # ============================================
 
 def check_all_achievements(achievements_list, stats):
     """Wrapper dla check_achievements z nowego modułu"""
@@ -443,6 +455,7 @@ eater_icon = upgrade_textures.get('eater')
 eater_premium_icon = upgrade_textures.get('eater_premium')
 donut_house_icon = upgrade_textures.get('donut_house')
 donut_eating_hall_icon = upgrade_textures.get('donut_eating_hall')
+donut_co_icon = upgrade_textures.get('donut_co')
 eating_power_icon = upgrade_textures.get('eating_power')
 store_icon = upgrade_textures.get('store')
 gastro_pill_icon = upgrade_textures.get('gastro_pill')
@@ -1152,7 +1165,7 @@ def draw_settings_window(x):
     return close_rect, code_button_rect_settings, checkbox_rect, vol_minus_rect, vol_plus_rect, vol_bar_rect, music_minus_rect, music_plus_rect, music_bar_rect, music_checkbox_rect
 
 def check_code(code):
-    global points, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, max_donuts, max_dps, time_played, game_start_time, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
+    global points, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, max_donuts, max_dps, time_played, game_start_time, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
     if code == "1234":
         print("Code verified!")
         return True
@@ -1174,6 +1187,7 @@ def check_code(code):
         eater_premium_count = 0
         donut_house_count = 0
         donut_eating_hall_count = 0
+        donut_co_count = 0
         max_donuts = 0
         max_dps = 0
         time_played = 0
@@ -1305,7 +1319,7 @@ def draw_menu(x):
     return close_rect, tab_rects, achievement_rects
 
 def draw_upgrades_tab(menu_x):
-    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, points, upgrade_subtab, shop_tab
+    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, points, upgrade_subtab, shop_tab, shop_tab_rects, subtab_rects
     
     # --- ZAKŁADKI SKLEPÓW (NA GÓRZE) ---
     shop_tab_height = 50
@@ -1354,7 +1368,7 @@ def draw_upgrades_tab(menu_x):
 
 def draw_donuts_shop_content(menu_x):
     """Zawartość zakładki Donuts Shop - sklep za pączki"""
-    global upgrade_subtab
+    global upgrade_subtab, subtab_rects
     
     # Podzakładki Buildings / Upgrades
     subtab_height = 60
@@ -1391,7 +1405,7 @@ def draw_donuts_shop_content(menu_x):
     return upgrade_rects, subtab_rects
 
 def draw_buildings_upgrades(menu_x):
-    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, points
+    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, points
     upgrade_rects = []
     upgrade_y = 160
     upgrade_height = 120
@@ -1544,6 +1558,43 @@ def draw_buildings_upgrades(menu_x):
             maxed_text4 = font_upgrade_name.render("MAX", True, (255, 215, 0))
             screen.blit(maxed_text4, (text_x, upgrade_y4 + 90))
         upgrade_rects.append(('donut_eating_hall', upgrade_rect4))
+    
+    # DONUT CORPORATION - piąty box
+    if max_donuts >= 500000:
+        upgrade_y5 = upgrade_y4 + upgrade_height + upgrade_spacing if max_donuts >= 50000 else upgrade_y3 + upgrade_height + upgrade_spacing if max_donuts >= 5000 else upgrade_y2 + upgrade_height + upgrade_spacing
+        upgrade_rect5 = pygame.Rect(upgrade_x, upgrade_y5, upgrade_width, upgrade_height)
+        donut_co_cost = get_donut_co_cost()
+        can_afford5 = points >= donut_co_cost and donut_co_count < DONUT_CO_MAX
+        hover5 = upgrade_rect5.collidepoint(pygame.mouse.get_pos())
+        if donut_co_count >= DONUT_CO_MAX:
+            bg_color5 = (100, 100, 100)
+        elif can_afford5:
+            bg_color5 = BROWN_LIGHT if hover5 else (120, 90, 60)
+        else:
+            bg_color5 = BROWN_DARK
+        pygame.draw.rect(screen, bg_color5, upgrade_rect5)
+        pygame.draw.rect(screen, BLACK, upgrade_rect5, 6)
+        
+        icon_y5 = upgrade_y5 + 10
+        if donut_co_icon:
+            screen.blit(donut_co_icon, (icon_x, icon_y5))
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), (icon_x, icon_y5, icon_size, icon_size))
+        pygame.draw.rect(screen, BLACK, (icon_x, icon_y5, icon_size, icon_size), 3)
+        
+        name_text5 = font_upgrade_name.render("Donut Corporation", True, WHITE)
+        screen.blit(name_text5, (text_x, upgrade_y5 + 10))
+        desc_text5 = font_upgrade_desc.render(f"+{DONUT_CO_DPS} donuts/sec", True, WHITE)
+        screen.blit(desc_text5, (text_x, upgrade_y5 + 45))
+        count_text5 = font_upgrade_desc.render(f"Owned: {donut_co_count}/{DONUT_CO_MAX}", True, WHITE)
+        screen.blit(count_text5, (text_x, upgrade_y5 + 70))
+        if donut_co_count < DONUT_CO_MAX:
+            cost_text5 = font_upgrade_name.render(f"Cost: {format_number(donut_co_cost)}", True, WHITE if can_afford5 else (255, 100, 100))
+            screen.blit(cost_text5, (text_x, upgrade_y5 + 90))
+        else:
+            maxed_text5 = font_upgrade_name.render("MAX", True, (255, 215, 0))
+            screen.blit(maxed_text5, (text_x, upgrade_y5 + 90))
+        upgrade_rects.append(('donut_co', upgrade_rect5))
     
     return upgrade_rects
 
@@ -2056,7 +2107,7 @@ while running:
                             shop_tab = i
                             break
                 
-                if not clicked_tab and active_tab == 0 and subtab_rects:
+                if not clicked_tab and active_tab == 0:
                     clicked_subtab = False
                     for i, subtab_rect in enumerate(subtab_rects):
                         if subtab_rect.collidepoint(mouse_x, mouse_y):
@@ -2086,6 +2137,11 @@ while running:
                                     if points >= donut_eating_hall_cost and donut_eating_hall_count < DONUT_EATING_HALL_MAX:
                                         points -= donut_eating_hall_cost
                                         donut_eating_hall_count += 1
+                                elif upgrade_type == 'donut_co':
+                                    donut_co_cost = get_donut_co_cost()
+                                    if points >= donut_co_cost and donut_co_count < DONUT_CO_MAX:
+                                        points -= donut_co_cost
+                                        donut_co_count += 1
                                 elif upgrade_type == 'eating_power':
                                     eating_power_cost = get_eating_power_cost()
                                     if points >= eating_power_cost:
@@ -2204,7 +2260,7 @@ while running:
     text_rect = text_surface.get_rect(center=(WIDTH // 2, 120))
     screen.blit(text_surface, text_rect)
     
-    current_dps = eater_count * EATER_DPS + eater_premium_count * EATER_PREMIUM_DPS + donut_house_count * DONUT_HOUSE_DPS
+    current_dps = eater_count * EATER_DPS + eater_premium_count * EATER_PREMIUM_DPS + donut_house_count * DONUT_HOUSE_DPS + donut_eating_hall_count * DONUT_EATING_HALL_DPS + donut_co_count * DONUT_CO_DPS
     dps_text = f"DPS: {current_dps:.1f}"
     dps_render = font_dps.render(dps_text, True, LIGHT_YELLOW)
     dps_position = dps_render.get_rect(center=(WIDTH // 2, 200))
