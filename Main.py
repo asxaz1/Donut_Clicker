@@ -10,11 +10,7 @@ import os
 import random
 import math
 from datetime import datetime, timedelta
-
-# Import modułu z ulepszeniami
 import upgrades
-
-# Import modułu z osiągnięciami
 import achievements
 
 pygame.init()
@@ -221,6 +217,9 @@ EATING_POWER_BASE_COST = 50
 idle_donuts = 0
 idle_time_seconds = 0
 idle_window_open = False
+
+scale_plus_factor = 0.6
+scale_minus_factor = 0.6
 
 # Zmienne dla powiadomień osiągnięć
 show_achievement_notification = False
@@ -504,7 +503,6 @@ menu_target_x = WIDTH
 menu_open = False
 active_tab = 0
 upgrade_subtab = 0
-shop_tab = 0  # 0 = Donuts Shop, 1 = Premium Shop
 
 settings_x = -800
 settings_target_x = -800
@@ -1021,7 +1019,7 @@ def draw_settings_window(x):
     screen.blit(label_text, (label_x, checkbox_y - 3))
     
     # --- PASEK GŁOŚNOŚCI ---
-    vol_label_y = 360
+    vol_label_y = 400
     vol_label = font_upgrade_name.render("Volume:", True, WHITE)
     screen.blit(vol_label, (x + 40, vol_label_y))
     
@@ -1039,6 +1037,7 @@ def draw_settings_window(x):
     pygame.draw.rect(screen, BROWN_LIGHT if minus_hover else BROWN_DARK, vol_minus_rect)
     pygame.draw.rect(screen, BLACK, vol_minus_rect, 5)
     minus_text = font_pixel.render("-", True, WHITE)
+    minus_text = pygame.transform.scale(minus_text, (int(minus_text.get_width() * scale_minus_factor), int(minus_text.get_height() * scale_minus_factor)))
     minus_rect = minus_text.get_rect(center=vol_minus_rect.center)
     screen.blit(minus_text, minus_rect)
     
@@ -1049,6 +1048,7 @@ def draw_settings_window(x):
     pygame.draw.rect(screen, BROWN_LIGHT if plus_hover else BROWN_DARK, vol_plus_rect)
     pygame.draw.rect(screen, BLACK, vol_plus_rect, 5)
     plus_text = font_pixel.render("+", True, WHITE)
+    plus_text = pygame.transform.scale(plus_text, (int(plus_text.get_width() * scale_plus_factor), int(plus_text.get_height() * scale_plus_factor)))
     plus_rect = plus_text.get_rect(center=vol_plus_rect.center)
     screen.blit(plus_text, plus_rect)
     
@@ -1093,12 +1093,13 @@ def draw_settings_window(x):
     
     # Przycisk − (minus) dla muzyki
     music_minus_x = x + 40
-    music_bar_y = 650
+    music_bar_y = 670
     music_minus_rect = pygame.Rect(music_minus_x, music_bar_y, vol_btn_size, vol_btn_size)
     music_minus_hover = music_minus_rect.collidepoint(pygame.mouse.get_pos())
     pygame.draw.rect(screen, BROWN_LIGHT if music_minus_hover else BROWN_DARK, music_minus_rect)
     pygame.draw.rect(screen, BLACK, music_minus_rect, 5)
     music_minus_text = font_pixel.render("-", True, WHITE)
+    music_minus_text = pygame.transform.scale(music_minus_text, (int(music_minus_text.get_width() * scale_minus_factor), int(music_minus_text.get_height() * scale_minus_factor)))
     music_minus_rect_center = music_minus_text.get_rect(center=music_minus_rect.center)
     screen.blit(music_minus_text, music_minus_rect_center)
     
@@ -1109,6 +1110,7 @@ def draw_settings_window(x):
     pygame.draw.rect(screen, BROWN_LIGHT if music_plus_hover else BROWN_DARK, music_plus_rect)
     pygame.draw.rect(screen, BLACK, music_plus_rect, 5)
     music_plus_text = font_pixel.render("+", True, WHITE)
+    music_plus_text = pygame.transform.scale(music_plus_text, (int(music_plus_text.get_width() * scale_minus_factor), int(music_plus_text.get_height() * scale_minus_factor)))  
     music_plus_rect_center = music_plus_text.get_rect(center=music_plus_rect.center)
     screen.blit(music_plus_text, music_plus_rect_center)
     
@@ -1143,7 +1145,7 @@ def draw_settings_window(x):
     # --- CHECKBOX MUZYKI ---
     music_checkbox_size = 20
     music_checkbox_x = x + 40
-    music_checkbox_y = 700
+    music_checkbox_y = 360
     
     # Box 20x20 - ciemniejszy brąz
     music_checkbox_rect = pygame.Rect(music_checkbox_x, music_checkbox_y, music_checkbox_size, music_checkbox_size)
@@ -1319,60 +1321,20 @@ def draw_menu(x):
     return close_rect, tab_rects, achievement_rects
 
 def draw_upgrades_tab(menu_x):
-    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, points, upgrade_subtab, shop_tab, shop_tab_rects, subtab_rects
+    global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, points, upgrade_subtab, subtab_rects
     
-    # --- ZAKŁADKI SKLEPÓW (NA GÓRZE) ---
-    shop_tab_height = 50
-    shop_tab_y = 30
-    shop_tab_width = (MENU_WIDTH - 80) // 2
-    shop_tab_spacing = 20
-    shop_tabs = ["Donuts Shop", "Premium Shop"]
-    shop_tab_rects = []
-    
-    for i, shop_name in enumerate(shop_tabs):
-        shop_tab_x = menu_x + 30 + i * (shop_tab_width + shop_tab_spacing)
-        shop_tab_rect = pygame.Rect(shop_tab_x, shop_tab_y, shop_tab_width, shop_tab_height)
-        shop_tab_rects.append(shop_tab_rect)
-        shop_tab_hover = shop_tab_rect.collidepoint(pygame.mouse.get_pos())
-        
-        if shop_tab == i:
-            shop_color = BROWN_LIGHT
-            border_color = (255, 215, 0)  # Złoty border dla aktywnej
-        elif shop_tab_hover:
-            shop_color = (160, 110, 70)
-            border_color = BROWN_LIGHTER
-        else:
-            shop_color = BROWN_DARK
-            border_color = BLACK
-        
-        pygame.draw.rect(screen, shop_color, shop_tab_rect)
-        pygame.draw.rect(screen, border_color, shop_tab_rect, 4)
-        
-        if shop_tab == i:
-            pygame.draw.line(screen, BROWN_LIGHTER, (shop_tab_x + 4, shop_tab_y + 4), (shop_tab_x + shop_tab_width - 4, shop_tab_y + 4), 3)
-        
-        text = font_upgrade_name.render(shop_name, True, WHITE)
-        text_rect = text.get_rect(center=shop_tab_rect.center)
-        screen.blit(text, text_rect)
-    
-    # --- ZAWARTOŚĆ W ZALEŻNOŚCI OD SHOP_TAB ---
-    if shop_tab == 0:
-        # DONUTS SHOP - zwykły sklep za pączki
-        upgrade_rects, subtab_rects = draw_donuts_shop_content(menu_x)
-        return upgrade_rects
-    else:
-        # PREMIUM SHOP - sklep za prawdziwe pieniądze
-        draw_premium_shop_content(menu_x)
-        return []
+    # DONUT UPGRADES - budynki i ulepszenia
+    upgrade_rects, subtab_rects = draw_donut_upgrades_content(menu_x)
+    return upgrade_rects
 
 
-def draw_donuts_shop_content(menu_x):
-    """Zawartość zakładki Donuts Shop - sklep za pączki"""
+def draw_donut_upgrades_content(menu_x):
+    """Zawartość zakładki Donut Upgrades - budynki i ulepszenia"""
     global upgrade_subtab, subtab_rects
     
     # Podzakładki Buildings / Upgrades
     subtab_height = 60
-    subtab_y = 100  # Poniżej zakładek sklepów
+    subtab_y = 75  # Poniżej zakładek sklepów
     subtab_width = (MENU_WIDTH - 80) // 2
     subtab_spacing = 20
     subtabs = ["Buildings", "Upgrades"]
@@ -1407,7 +1369,7 @@ def draw_donuts_shop_content(menu_x):
 def draw_buildings_upgrades(menu_x):
     global eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, points
     upgrade_rects = []
-    upgrade_y = 160
+    upgrade_y = 155
     upgrade_height = 120
     upgrade_margin = 20
     upgrade_spacing = 10
@@ -1601,7 +1563,7 @@ def draw_buildings_upgrades(menu_x):
 def draw_upgrades_upgrades(menu_x):
     global points, store_unlocked, eating_power_level
     upgrade_rects = []
-    upgrade_y = 160
+    upgrade_y = 155
     upgrade_height = 120
     upgrade_margin = 20
     upgrade_spacing = 10
@@ -1830,11 +1792,11 @@ def draw_inventory_tab(menu_x):
     """Zakładka Inventory - ekwipunek (placeholder na przyszłość)"""
     # Tytuł
     title_text = font_pixel.render("Inventory", True, WHITE)
-    title_rect = title_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=30)
+    title_rect = title_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=100)
     screen.blit(title_text, title_rect)
     
     # Placeholder - pusta zakładka
-    placeholder_y = 150
+    placeholder_y = 200
     placeholder_text = font_upgrade_name.render("Coming Soon!", True, (200, 200, 200))
     placeholder_rect = placeholder_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=placeholder_y)
     screen.blit(placeholder_text, placeholder_rect)
@@ -2100,12 +2062,6 @@ while running:
                             achievement_detail_to_show = achievement
                             break
                 
-                # Obsługa kliknięć w zakładki sklepów (Donuts Shop / Premium Shop)
-                if not clicked_tab and active_tab == 0 and shop_tab_rects:
-                    for i, shop_rect in enumerate(shop_tab_rects):
-                        if shop_rect.collidepoint(mouse_x, mouse_y):
-                            shop_tab = i
-                            break
                 
                 if not clicked_tab and active_tab == 0:
                     clicked_subtab = False
