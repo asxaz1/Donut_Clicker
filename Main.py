@@ -41,6 +41,8 @@ BROWN_DARK = (101, 67, 33)
 BROWN_LIGHT = (180, 130, 90)
 BROWN_LIGHTER = (200, 150, 110)
 LIGHT_YELLOW = (255, 240, 150)
+LIGHT_GREEN = (0, 255, 100)
+DARK_GREEN = (0, 200, 0)
 
 SAVE_FILE = "donut_clicker_save.json"
 ACHIEVEMENT_DESCRIPTIONS_FILE = "achievement_descriptions.json"
@@ -179,26 +181,28 @@ time_played = 0
 total_donuts_earned = 0
 total_time_played = 0
 game_start_time = pygame.time.get_ticks()
+do_bucks = 0
+donut_conversion_rate = 0
 
 eater_count = 0
 EATER_MAX = 10
 EATER_BASE_COST = 100
-EATER_DPS = 0.5
+EATER_DPS = 1
 
 eater_premium_count = 0
 EATER_PREMIUM_MAX = 10
 EATER_PREMIUM_BASE_COST = 1000
-EATER_PREMIUM_DPS = 2.5
+EATER_PREMIUM_DPS = 5
 
 donut_house_count = 0
 DONUT_HOUSE_MAX = 10
 DONUT_HOUSE_BASE_COST = 10000
-DONUT_HOUSE_DPS = 5.0
+DONUT_HOUSE_DPS = 10
 
 donut_eating_hall_count = 0
 DONUT_EATING_HALL_MAX = 25
 DONUT_EATING_HALL_BASE_COST = 100000
-DONUT_EATING_HALL_DPS = 10.0
+DONUT_EATING_HALL_DPS = 50
 
 donut_co_count = 0
 DONUT_CO_MAX = 10
@@ -311,6 +315,16 @@ def get_sorted_achievements(achievements_list):
     """Zwraca posortowaną listę osiągnięć"""
     return sorted(achievements.ACHIEVEMENTS, key=lambda a: (not a.unlocked, a.requirement))
 
+def convert_donuts_to_bucks(donuts):
+    """Konwertuje donuts na bucks (1 buck = 1 billion donuts)"""
+    do_bucks = donuts // 1_000_000_000
+    return donuts, do_bucks
+
+def conversion_rate_show():
+    """Zwraca aktualną wartość konwersji donuts na bucks jako string"""
+    donut_conversion_rate = donut // 1_000_000_000
+    return donut_conversion_rate
+
 load_game()
 
 # Osiągnięcia są już zainicjalizowane w module achievements jako ACHIEVEMENTS
@@ -329,6 +343,7 @@ try:
     font_code = pygame.font.Font("PressStart2P-Regular.ttf", 36)
     font_dps = pygame.font.Font("PressStart2P-Regular.ttf", 28)
     font_stats = pygame.font.Font("PressStart2P-Regular.ttf", 20)
+    font_conversion = pygame.font.Font("PressStart2P-Regular.ttf", 14)
 except:
     font_pixel = pygame.font.Font(None, 150)
     font_button = pygame.font.Font(None, 60)
@@ -533,6 +548,12 @@ settings_button_x = 30
 settings_button_y = HEIGHT - settings_button_size - 30
 settings_button_rect = pygame.Rect(settings_button_x, settings_button_y, settings_button_size, settings_button_size)
 
+convert_button_length = 500
+convert_button_height = 50
+convert_button_x = WIDTH // 2 - convert_button_length // 2
+convert_button_y = HEIGHT - 125
+convert_button_rect = pygame.Rect(convert_button_x, convert_button_y, convert_button_length, convert_button_height)
+
 code_input_active = False
 code_verified = False
 amount_input_text = ""
@@ -711,6 +732,10 @@ def draw_store_window():
     title_text = font_pixel.render("STORE", True, WHITE)
     title_rect = title_text.get_rect(center=(WIDTH // 2, 100))
     screen.blit(title_text, title_rect)
+
+    conver_info = font_conversion.render(f"Convert {points} donuts → {donut_conversion_rate} dobucks", True, WHITE)
+    conver_rect = conver_info.get_rect(center=(WIDTH // 2, 940))
+    screen.blit(conver_info, conver_rect)
     
     hint_text = font_upgrade_desc.render("Press ESC to close", True, WHITE)
     hint_rect = hint_text.get_rect(center=(WIDTH // 2, box_height - 40))
@@ -1679,28 +1704,6 @@ def draw_upgrades_upgrades(menu_x):
     
     return upgrade_rects
 
-def draw_premium_shop_content(menu_x):
-    """Zawartość zakładki Premium Shop - sklep za prawdziwe pieniądze (placeholder)"""
-    # Tytuł
-    title_y = 150
-    title_text = font_pixel.render("Premium Shop", True, WHITE)
-    title_rect = title_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=title_y)
-    screen.blit(title_text, title_rect)
-    
-    # Placeholder
-    placeholder_y = 250
-    placeholder_text = font_upgrade_name.render("Coming Soon!", True, (200, 200, 200))
-    placeholder_rect = placeholder_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=placeholder_y)
-    screen.blit(placeholder_text, placeholder_rect)
-    
-    desc_text = font_upgrade_desc.render("This shop will contain premium items", True, (150, 150, 150))
-    desc_rect = desc_text.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=placeholder_y + 40)
-    screen.blit(desc_text, desc_rect)
-    
-    desc_text2 = font_upgrade_desc.render("purchasable with real money.", True, (150, 150, 150))
-    desc_rect2 = desc_text2.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=placeholder_y + 70)
-    screen.blit(desc_text2, desc_rect2)
-
 
 def draw_achievements_tab(menu_x):
     """Rysuje zakładkę z osiągnięciami"""
@@ -1713,7 +1716,7 @@ def draw_achievements_tab(menu_x):
     start_y = 160
     box_size = 120
     spacing = 10
-    boxes_per_row = 3
+    boxes_per_row = 4
     
     sorted_achievements_list = get_sorted_achievements(None)  # Wrapper używa ACHIEVEMENTS
     
@@ -1809,6 +1812,34 @@ def draw_inventory_tab(menu_x):
     desc_rect2 = desc_text2.get_rect(centerx=menu_x + MENU_WIDTH // 2, y=placeholder_y + 70)
     screen.blit(desc_text2, desc_rect2)
 
+#def draw_inventory_content(menu_x):
+#    """Rysuje zawartość zakładki Inventory"""
+#    start_y = 150
+#    item_height = 120
+#    item_spacing = 20
+# TODO: dodać rysowanie przedmiotów w ekwipunku
+
+def draw_converting_button():
+
+    hover = convert_button_rect.collidepoint(pygame.mouse.get_pos())
+    
+    if hover:
+        color = LIGHT_GREEN
+    else:
+        color = DARK_GREEN
+    
+    pygame.draw.rect(screen, color, convert_button_rect)
+    pygame.draw.rect(screen, BLACK, convert_button_rect, 6)
+    
+    text = font_button.render("Convert Donuts", True, WHITE)
+    text_rect = text.get_rect(center=convert_button_rect.center)
+    screen.blit(text, text_rect)
+
+    print("Drawing converting button at:", convert_button_rect)  # Debug print
+    
+    return convert_button_rect
+
+  
 running = True
 donut_scale = 1.0
 target_scale = 1.0
@@ -2115,6 +2146,9 @@ while running:
                                         gastro_pill_unlocked = True
                                         print("Gastro Pill unlocked! +30% clicks bonus!")
                                 break
+            elif store_window_open and convert_button_rect and convert_button_rect.collidepoint(mouse_x, mouse_y):
+                convert_donuts_to_bucks()
+                pass
             elif button_rect.collidepoint(mouse_x, mouse_y):
                 menu_open = not menu_open
                 menu_target_x = WIDTH - MENU_WIDTH if menu_open else WIDTH
@@ -2242,11 +2276,14 @@ while running:
         if active_tab == 0:
             upgrade_rects = draw_upgrades_tab(menu_x)
     
+
     if settings_x > -800:
         settings_close_rect, settings_code_button_rect, settings_checkbox_rect, settings_vol_minus_rect, settings_vol_plus_rect, settings_vol_bar_rect, settings_music_minus_rect, settings_music_plus_rect, settings_music_bar_rect, settings_music_checkbox_rect = draw_settings_window(settings_x)
     
     if store_window_open:
         draw_store_window()
+
+        convert_button_rect = draw_converting_button()
     
     # Okno idle - rysowane na samym wierzchu
     idle_ok_button = None
