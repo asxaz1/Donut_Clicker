@@ -65,12 +65,13 @@ def load_achievement_descriptions():
 achievement_descriptions = load_achievement_descriptions()
 
 def load_game():
-    global points, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
+    global points, do_bucks, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, 'r') as f:
                 data = json.load(f)
                 points = data.get('points', 0)
+                do_bucks = data.get('do_bucks', 0)
                 max_donuts = data.get('max_donuts', 0)
                 max_dps = data.get('max_dps', 0)
                 time_played = data.get('time_played', 0)
@@ -145,6 +146,7 @@ def save_game():
     
     data = {
         'points': points,
+        'do_bucks': do_bucks,
         'max_donuts': max_donuts,
         'max_dps': max_dps,
         'time_played': time_played,
@@ -315,14 +317,17 @@ def get_sorted_achievements(achievements_list):
     """Zwraca posortowaną listę osiągnięć"""
     return sorted(achievements.ACHIEVEMENTS, key=lambda a: (not a.unlocked, a.requirement))
 
-def convert_donuts_to_bucks(donuts):
+def convert_donuts_to_bucks():
     """Konwertuje donuts na bucks (1 buck = 1 billion donuts)"""
-    do_bucks = donuts // 1_000_000_000
-    return donuts, do_bucks
+    global do_bucks, points
+    do_bucks += int(points // 1_000_000_000)
+    points = points % 1_000_000_000
+    return points, do_bucks
 
 def conversion_rate_show():
-    """Zwraca aktualną wartość konwersji donuts na bucks jako string"""
-    donut_conversion_rate = donut // 1_000_000_000
+    """Updates the current conversion rate of donuts to bucks"""
+    global donut_conversion_rate
+    donut_conversion_rate = int(points // 1_000_000_000)
     return donut_conversion_rate
 
 load_game()
@@ -733,9 +738,13 @@ def draw_store_window():
     title_rect = title_text.get_rect(center=(WIDTH // 2, 100))
     screen.blit(title_text, title_rect)
 
-    conver_info = font_conversion.render(f"Convert {points} donuts → {donut_conversion_rate} dobucks", True, WHITE)
+    conver_info = font_conversion.render(f"Convert {format_number(points)} donuts → {donut_conversion_rate} dobucks", True, WHITE)
     conver_rect = conver_info.get_rect(center=(WIDTH // 2, 940))
     screen.blit(conver_info, conver_rect)
+
+    actual_dobucks_amount_text = font_conversion.render(f"You have: {do_bucks} dobucks", True, DARK_GREEN)
+    actual_dobucks_amount_rect = actual_dobucks_amount_text.get_rect(center = (WIDTH // 2, 155))
+    screen.blit(actual_dobucks_amount_text, actual_dobucks_amount_rect)
     
     hint_text = font_upgrade_desc.render("Press ESC to close", True, WHITE)
     hint_rect = hint_text.get_rect(center=(WIDTH // 2, box_height - 40))
@@ -1223,6 +1232,7 @@ def check_code(code):
         store_unlocked = False
         eating_power_level = 0
         gastro_pill_unlocked = False
+        do_bucks = 0
         # Reset osiągnięć
         for achievement in achievements.ACHIEVEMENTS:
             achievement.unlocked = False
@@ -1834,8 +1844,6 @@ def draw_converting_button():
     text = font_button.render("Convert Donuts", True, WHITE)
     text_rect = text.get_rect(center=convert_button_rect.center)
     screen.blit(text, text_rect)
-
-    print("Drawing converting button at:", convert_button_rect)  # Debug print
     
     return convert_button_rect
 
@@ -2002,7 +2010,13 @@ while running:
                 # Sprawdzimy to później w sekcji rysowania
                 continue
             
-            if code_input_active or code_verified or store_window_open:
+            if store_window_open:
+                if convert_button_rect and convert_button_rect.collidepoint(mouse_x, mouse_y):
+                    convert_donuts_to_bucks()
+                    conversion_rate_show()
+                    continue
+
+            if code_input_active or code_verified:
                 continue
             
             if settings_window_open:
@@ -2072,6 +2086,7 @@ while running:
             
             if store_unlocked and store_button_rect.collidepoint(mouse_x, mouse_y):
                 store_window_open = True
+                conversion_rate_show()
                 continue
             if menu_open and menu_close_rect and menu_close_rect.collidepoint(mouse_x, mouse_y):
                 menu_open = False
@@ -2148,7 +2163,7 @@ while running:
                                 break
             elif store_window_open and convert_button_rect and convert_button_rect.collidepoint(mouse_x, mouse_y):
                 convert_donuts_to_bucks()
-                pass
+                continue
             elif button_rect.collidepoint(mouse_x, mouse_y):
                 menu_open = not menu_open
                 menu_target_x = WIDTH - MENU_WIDTH if menu_open else WIDTH
