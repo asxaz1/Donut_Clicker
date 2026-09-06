@@ -45,7 +45,7 @@ def load_achievement_descriptions():
 achievement_descriptions = load_achievement_descriptions()
 
 def load_game():
-    global points, do_bucks, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked, overall_do_bucks_earned, sound_settings, music_settings, background_music_path
+    global points, do_bucks, max_donuts, max_dps, time_played, eater_count, eater_premium_count, donut_house_count, donut_eating_hall_count, donut_co_count, total_donuts_earned, total_time_played, store_unlocked, eating_power_level, idle_donuts, idle_time_seconds, idle_window_open, gastro_pill_unlocked, overall_do_bucks_earned, sound_settings, music_settings, background_music_path, donut_nation_count, saturation_unlocked
     if os.path.exists(SAVE_FILE):
         try:
             with open(SAVE_FILE, 'r') as f:
@@ -80,6 +80,31 @@ def load_game():
                 
                 last_exit_time_str = data.get('last_exit_time')
                 exit_dps = data.get('exit_dps', 0)
+                donut_nation_count = data.get('donut_nation_count', donut_nation_count)
+                buildings_data = data.get('buildings')
+                if buildings_data:
+                    try:
+                        upgrades.load_buildings(buildings_data)
+                        
+                        eater_count = upgrades.BUILDINGS.get('eater').count
+                        eater_premium_count = upgrades.BUILDINGS.get('eater_premium').count
+                        donut_house_count = upgrades.BUILDINGS.get('donut_house').count
+                        donut_eating_hall_count = upgrades.BUILDINGS.get('donut_eating_hall').count
+                        donut_co_count = upgrades.BUILDINGS.get('donut_co').count
+                        donut_nation_count = upgrades.BUILDINGS.get('donut_nation').count
+                    except Exception:
+                        pass
+                
+                
+                upgrades_data = data.get('upgrades')
+                if upgrades_data:
+                    try:
+                        upgrades.load_upgrades(upgrades_data)
+                        eating_power_level = upgrades.UPGRADES.get('eating_power').level
+                        gastro_pill_unlocked = upgrades.UPGRADES.get('gastro_pill').unlocked
+                        saturation_unlocked = upgrades.UPGRADES.get('saturation').unlocked
+                    except Exception:
+                        pass
                 
                 if last_exit_time_str:
                     try:
@@ -88,7 +113,7 @@ def load_game():
                         time_diff = current_time - last_exit_time
                         idle_seconds = int(time_diff.total_seconds())
 
-                        if idle_seconds > 10:
+                        if idle_seconds >= 1800:
                             idle_time_seconds = idle_seconds
                             idle_donuts = int((idle_seconds / 600) * exit_dps)
                             idle_window_open = True
@@ -96,6 +121,11 @@ def load_game():
                         print(f"Error calculating idle rewards: {e}")
                 
                 
+                achievement_data = data.get('achievements', {})
+                if achievement_data:
+                    achievements.load_achievements(achievement_data)
+                    print(f"Loaded {len(achievement_data)} achievements")
+
                 print("Game loaded successfully!")
         except Exception as e:
             print(f"Could not load save file: {e}, starting fresh")
@@ -131,7 +161,18 @@ def save_game():
         'music_volume': music_settings['volume'],
         'achievements': achievements.save_achievements(),
         'last_exit_time': exit_time,
-        'exit_dps': current_dps
+                'exit_dps': current_dps,
+                'donut_nation_count': donut_nation_count,
+                'buildings': {
+                    'eater': eater_count,
+                    'eater_premium': eater_premium_count,
+                    'donut_house': donut_house_count,
+                    'donut_eating_hall': donut_eating_hall_count,
+                    'donut_co': donut_co_count,
+                    'donut_nation': donut_nation_count
+                },
+                'upgrades': upgrades.save_upgrades(upgrades.UPGRADES),
+                'saturation_unlocked': saturation_unlocked
     }
     try:
         with open(SAVE_FILE, 'w') as f:
@@ -160,28 +201,38 @@ EATER_DPS = 1
 eater_premium_count = 0
 EATER_PREMIUM_MAX = 10
 EATER_PREMIUM_BASE_COST = 1000
-EATER_PREMIUM_DPS = 5
+EATER_PREMIUM_DPS = 25
 
 donut_house_count = 0
 DONUT_HOUSE_MAX = 10
 DONUT_HOUSE_BASE_COST = 10000
-DONUT_HOUSE_DPS = 10
+DONUT_HOUSE_DPS = 100
 
 donut_eating_hall_count = 0
 DONUT_EATING_HALL_MAX = 25
 DONUT_EATING_HALL_BASE_COST = 100000
-DONUT_EATING_HALL_DPS = 50
+DONUT_EATING_HALL_DPS = 600
 
 donut_co_count = 0
 DONUT_CO_MAX = 10
 DONUT_CO_BASE_COST = 1000000
-DONUT_CO_DPS = 100.0
+DONUT_CO_DPS = 2250.0
+
+DONUT_NATION_BASE_COST = 100000000
+DONUT_NATION_DPS = 10000.0
+donut_nation_count = 0
+DONUT_NATION_MAX = 10
 
 store_unlocked = False
 STORE_COST = 500
 
+donut_press_strength = 0.0
+
 gastro_pill_unlocked = False
 GASTRO_PILL_COST = 1000
+
+saturation_unlocked = False
+SATURATION_COST = 2500
 
 eating_power_level = 0
 EATING_POWER_BASE_COST = 50
@@ -198,13 +249,26 @@ achievement_to_show = None
 achievement_notification_timer = 0
 ACHIEVEMENT_NOTIFICATION_DURATION = 3000
 
+achievements_queue = []
+
 achievement_detail_window_open = False
 achievement_detail_to_show = None
 
+info_button_rects = []
+description_modal_open = False
+description_modal_content = None
+
+exit_confirmation_open = False
+
+
 def get_clicks_per_click():
     base_clicks = 1 + eating_power_level
+    clicks = base_clicks
     if gastro_pill_unlocked:
-        return int(base_clicks * 1.3)
+        clicks = int(clicks * 1.3)
+    if saturation_unlocked:
+        clicks += 100
+    return int(clicks)
     return base_clicks
 
 def get_eater_cost():
@@ -229,7 +293,10 @@ def get_eating_power_cost():
     return int(EATING_POWER_BASE_COST * (1.08 ** eating_power_level))
 
 def get_total_dps():
-    return (eater_count * EATER_DPS) + (eater_premium_count * EATER_PREMIUM_DPS) + (donut_house_count * DONUT_HOUSE_DPS) + (donut_eating_hall_count * DONUT_EATING_HALL_DPS) + (donut_co_count * DONUT_CO_DPS)
+    return (eater_count * EATER_DPS) + (eater_premium_count * EATER_PREMIUM_DPS) + (donut_house_count * DONUT_HOUSE_DPS) + (donut_eating_hall_count * DONUT_EATING_HALL_DPS) + (donut_co_count * DONUT_CO_DPS) + (donut_nation_count * DONUT_NATION_DPS)
+
+def get_donut_nation_cost():
+    return int(DONUT_NATION_BASE_COST * (1.09 ** donut_nation_count))
 
 def format_number(num):
     num = int(num)
@@ -331,6 +398,13 @@ except:
     font_dps = pygame.font.Font(None, 40)
     font_stats = pygame.font.Font(None, 32)
 
+def draw_pixel_rect(surface, rect, fill_color, border_color=(0,0,0), border_thickness=4):
+    pygame.draw.rect(surface, fill_color, rect)
+    for i in range(border_thickness):
+        pygame.draw.rect(surface, border_color, (rect.x+i, rect.y+i, rect.w-2*i, rect.h-2*i), 1)
+
+
+
 settings_icon_path = None
 
 tab_upgrades_icon_path = None
@@ -368,8 +442,9 @@ def load_upgrade_icon(path):
     if path is None:
         return None
     try:
-        icon = pygame.image.load(path)
-        icon = pygame.transform.scale(icon, (100, 100))
+        icon = pygame.image.load(path).convert_alpha()
+        if icon.get_size() != (100, 100):
+            icon = pygame.transform.scale(icon, (100, 100))
         return icon
     except:
         return None
@@ -378,7 +453,7 @@ def load_tab_icon(path):
     if path is None:
         return None
     try:
-        icon = pygame.image.load(path)
+        icon = pygame.image.load(path).convert_alpha()
         if icon.get_size() != (64, 64):
             icon = pygame.transform.scale(icon, (64, 64))
         return icon
@@ -396,9 +471,11 @@ eater_premium_icon = upgrade_textures.get('eater_premium')
 donut_house_icon = upgrade_textures.get('donut_house')
 donut_eating_hall_icon = upgrade_textures.get('donut_eating_hall')
 donut_co_icon = upgrade_textures.get('donut_co')
+donut_nation_icon = upgrade_textures.get('donut_nation')
 eating_power_icon = upgrade_textures.get('eating_power')
 store_icon = upgrade_textures.get('store')
 gastro_pill_icon = upgrade_textures.get('gastro_pill')
+saturation_icon = upgrade_textures.get('saturation')
 
 tab_upgrades_icon = load_tab_icon(tab_upgrades_icon_path)
 tab_achievements_icon = load_tab_icon(tab_achievements_icon_path)
@@ -574,8 +651,7 @@ def draw_store_button(x, y, size, hover=False):
 
 def draw_button(x, y, size, hover=False):
     color = BROWN_LIGHT if hover else BROWN
-    pygame.draw.rect(screen, color, (x, y, size, size))
-    pygame.draw.rect(screen, BROWN_DARK, (x, y, size, size), 6)
+    draw_pixel_rect(screen, pygame.Rect(x, y, size, size), color, BROWN_DARK, 6)
     pygame.draw.line(screen, BROWN_LIGHT, (x + 6, y + 6), (x + size - 6, y + 6), 6)
     pygame.draw.line(screen, BROWN_LIGHT, (x + 6, y + 6), (x + 6, y + size - 6), 6)
     line_width = size - 30
@@ -636,73 +712,68 @@ def draw_store_window():
     global convert_button_rect
 
     overlay = pygame.Surface((WIDTH, HEIGHT))
-    overlay.set_alpha(200)
+    overlay.set_alpha(180)
     overlay.fill(BLACK)
     screen.blit(overlay, (0, 0))
 
-    box_width = 600
+    box_width = WIDTH - 30
     box_height = HEIGHT
-    box_x = WIDTH // 2 - box_width // 2
+    box_x = 15
     box_y = 0
 
-    pygame.draw.rect(screen, BROWN, (box_x, box_y, box_width, box_height))
-    pygame.draw.rect(screen, BLACK, (box_x, box_y, box_width, box_height), 6)
-
-    pygame.draw.line(screen, BROWN_LIGHT, (box_x + 6, box_y + 6), (box_x + box_width - 6, box_y + 6), 4)
+    draw_pixel_rect(screen, pygame.Rect(box_x, box_y, box_width, box_height), BROWN, BLACK, 6)
+    pygame.draw.line(screen, BROWN_LIGHT, (box_x + 10, box_y + 10), (box_x + box_width - 10, box_y + 10), 5)
 
     title_text = font_pixel.render("STORE", True, WHITE)
-    title_rect = title_text.get_rect(center=(WIDTH // 2, 100))
+    title_rect = title_text.get_rect(center=(WIDTH // 2, 92))
 
-    title_bg_rect = pygame.Rect(WIDTH // 2 - 200, 50, 400, 90)
-    pygame.draw.rect(screen, BROWN_DARK, title_bg_rect)
-    pygame.draw.rect(screen, (255, 215, 0), title_bg_rect, 3)
+    title_bg_rect = pygame.Rect(WIDTH // 2 - 230, 40, 460, 90)
+    draw_pixel_rect(screen, title_bg_rect, BROWN_DARK, (255, 215, 0), 3)
     screen.blit(title_text, title_rect)
 
-    balance_box_width = 300
-    balance_box_height = 60
+    balance_box_width = 360
+    balance_box_height = 72
     balance_box_x = WIDTH // 2 - balance_box_width // 2
-    balance_box_y = 140
+    balance_box_y = 150
 
-    pygame.draw.rect(screen, BROWN_LIGHTER, (balance_box_x, balance_box_y, balance_box_width, balance_box_height))
-    pygame.draw.rect(screen, BLACK, (balance_box_x, balance_box_y, balance_box_width, balance_box_height), 4)
+    draw_pixel_rect(screen, pygame.Rect(balance_box_x, balance_box_y, balance_box_width, balance_box_height), BROWN_LIGHTER, BLACK, 4)
 
     balance_label = font_upgrade_desc.render("Dobucks Balance:", True, WHITE)
-    balance_label_rect = balance_label.get_rect(center=(WIDTH // 2, balance_box_y + 20))
+    balance_label_rect = balance_label.get_rect(center=(WIDTH // 2, balance_box_y + 23))
     screen.blit(balance_label, balance_label_rect)
 
     balance_amount = font_upgrade_name.render(f"{do_bucks} DOB", True, DARK_GREEN)
-    balance_amount_rect = balance_amount.get_rect(center=(WIDTH // 2, balance_box_y + 45))
+    balance_amount_rect = balance_amount.get_rect(center=(WIDTH // 2, balance_box_y + 49))
     screen.blit(balance_amount, balance_amount_rect)
 
     items_header = font_upgrade_name.render("Available Items", True, WHITE)
-    items_header_rect = items_header.get_rect(center=(WIDTH // 2, 240))
+    items_header_rect = items_header.get_rect(center=(WIDTH // 2, 260))
     screen.blit(items_header, items_header_rect)
 
-    pygame.draw.line(screen, WHITE, (WIDTH // 2 - 100, 265), (WIDTH // 2 + 100, 265), 2)
+    pygame.draw.line(screen, WHITE, (WIDTH // 2 - 120, 285), (WIDTH // 2 + 120, 285), 2)
 
     convert_button_width = 500
-    convert_button_height = 50
+    convert_button_height = 58
     convert_button_x = WIDTH // 2 - convert_button_width // 2
-    convert_button_y = 1000
+    convert_button_y = HEIGHT - 110
     convert_button_rect = pygame.Rect(convert_button_x, convert_button_y, convert_button_width, convert_button_height)
 
     hover = convert_button_rect.collidepoint(pygame.mouse.get_pos())
     if hover:
-        pygame.draw.rect(screen, LIGHT_GREEN, convert_button_rect)
+        draw_pixel_rect(screen, convert_button_rect, LIGHT_GREEN, BLACK, 4)
     else:
-        pygame.draw.rect(screen, DARK_GREEN, convert_button_rect)
-    pygame.draw.rect(screen, BLACK, convert_button_rect, 4)
+        draw_pixel_rect(screen, convert_button_rect, DARK_GREEN, BLACK, 4)
 
     convert_text = font_upgrade_name.render("Convert Donuts", True, WHITE)
     convert_text_rect = convert_text.get_rect(center=convert_button_rect.center)
     screen.blit(convert_text, convert_text_rect)
 
     conver_info = font_conversion.render(f"Convert {format_number(points)} donuts -> {donut_conversion_rate} dobucks", True, WHITE)
-    conver_rect = conver_info.get_rect(center=(WIDTH // 2, 970))
+    conver_rect = conver_info.get_rect(center=(WIDTH // 2, HEIGHT - 155))
     screen.blit(conver_info, conver_rect)
 
     hint_text = font_upgrade_desc.render("Press ESC to close", True, (200, 200, 200))
-    hint_rect = hint_text.get_rect(center=(WIDTH // 2, box_height - 40))
+    hint_rect = hint_text.get_rect(center=(WIDTH // 2, HEIGHT - 36))
     screen.blit(hint_text, hint_rect)
 
 def draw_achievement_notification(achievement, timer):
@@ -724,16 +795,14 @@ def draw_achievement_notification(achievement, timer):
     box_x = WIDTH // 2 - box_width // 2
     box_y = int(y_pos)
     
-    pygame.draw.rect(screen, BROWN, (box_x, box_y, box_width, box_height))
-    pygame.draw.rect(screen, BLACK, (box_x, box_y, box_width, box_height), 6)
+    draw_pixel_rect(screen, pygame.Rect(box_x, box_y, box_width, box_height), BROWN, BLACK, 6)
     pygame.draw.line(screen, BROWN_LIGHT, (box_x + 6, box_y + 6), (box_x + box_width - 6, box_y + 6), 6)
     
     icon_size = 100
     icon_x = box_x + 25
     icon_y = box_y + 25
     
-    pygame.draw.rect(screen, (255, 215, 0), (icon_x, icon_y, icon_size, icon_size))
-    pygame.draw.rect(screen, BLACK, (icon_x, icon_y, icon_size, icon_size), 3)
+    draw_pixel_rect(screen, pygame.Rect(icon_x, icon_y, icon_size, icon_size), (255, 215, 0), BLACK, 3)
     
     text_x = icon_x + icon_size + 20
     
@@ -763,8 +832,7 @@ def draw_achievement_detail_window(achievement):
     box_x = WIDTH // 2 - box_width // 2
     box_y = HEIGHT // 2 - box_height // 2
     
-    pygame.draw.rect(screen, BROWN, (box_x, box_y, box_width, box_height))
-    pygame.draw.rect(screen, BLACK, (box_x, box_y, box_width, box_height), 6)
+    draw_pixel_rect(screen, pygame.Rect(box_x, box_y, box_width, box_height), BROWN, BLACK, 6)
     pygame.draw.line(screen, BROWN_LIGHT, (box_x + 6, box_y + 6), (box_x + box_width - 6, box_y + 6), 6)
     pygame.draw.line(screen, BROWN_LIGHT, (box_x + 6, box_y + 6), (box_x + 6, box_y + box_height - 6), 6)
     pygame.draw.line(screen, BROWN_DARK, (box_x + 6, box_y + box_height - 10), (box_x + box_width - 6, box_y + box_height - 10), 6)
@@ -899,8 +967,7 @@ def draw_idle_window():
     ok_hover = ok_button_rect.collidepoint(pygame.mouse.get_pos())
     button_color = BROWN_LIGHT if ok_hover else BROWN
     
-    pygame.draw.rect(screen, button_color, ok_button_rect)
-    pygame.draw.rect(screen, BLACK, ok_button_rect, 6)
+    draw_pixel_rect(screen, ok_button_rect, button_color, BLACK, 6)
     pygame.draw.line(screen, BROWN_LIGHTER, (button_x + 6, button_y + 6), (button_x + button_width - 6, button_y + 6), 6)
     pygame.draw.line(screen, BROWN_LIGHTER, (button_x + 6, button_y + 6), (button_x + 6, button_y + button_height - 6), 6)
     
@@ -1243,7 +1310,8 @@ def draw_upgrades_tab(menu_x):
 def draw_donut_upgrades_content(menu_x):
     """Zawartość zakładki Donut Upgrades - budynki i ulepszenia"""
     global upgrade_subtab, subtab_rects
-    
+    global info_button_rects
+    info_button_rects = []
     subtab_height = 60
     subtab_y = 75  # Poniżej zakładek sklepów
     subtab_width = (MENU_WIDTH - 80) // 2
@@ -1297,8 +1365,7 @@ def draw_buildings_upgrades(menu_x):
         bg_color = BROWN_LIGHT if hover else (120, 90, 60)
     else:
         bg_color = BROWN_DARK
-    pygame.draw.rect(screen, bg_color, upgrade_rect)
-    pygame.draw.rect(screen, BLACK, upgrade_rect, 6)
+    draw_pixel_rect(screen, upgrade_rect, bg_color, BLACK, 6)
     
     icon_size = 100
     icon_x = upgrade_x + 10
@@ -1322,6 +1389,12 @@ def draw_buildings_upgrades(menu_x):
     else:
         maxed_text = font_upgrade_name.render("MAX", True, (255, 215, 0))
         screen.blit(maxed_text, (text_x, upgrade_y + 90))
+    info_rect = pygame.Rect(upgrade_rect.right - 36, upgrade_rect.y + 10, 26, 26)
+    pygame.draw.rect(screen, (30, 30, 30), info_rect)
+    i_text = font_tab.render('i', True, WHITE)
+    i_rect = i_text.get_rect(center=info_rect.center)
+    screen.blit(i_text, i_rect)
+    info_button_rects.append(('building', 'eater', info_rect))
     upgrade_rects.append(('eater', upgrade_rect))
     
     upgrade_y2 = upgrade_y + upgrade_height + upgrade_spacing
@@ -1335,8 +1408,7 @@ def draw_buildings_upgrades(menu_x):
         bg_color2 = BROWN_LIGHT if hover2 else (120, 90, 60)
     else:
         bg_color2 = BROWN_DARK
-    pygame.draw.rect(screen, bg_color2, upgrade_rect2)
-    pygame.draw.rect(screen, BLACK, upgrade_rect2, 6)
+    draw_pixel_rect(screen, upgrade_rect2, bg_color2, BLACK, 6)
     
     icon_y2 = upgrade_y2 + 10
     if eater_premium_icon:
@@ -1357,6 +1429,11 @@ def draw_buildings_upgrades(menu_x):
     else:
         maxed_text2 = font_upgrade_name.render("MAX", True, (255, 215, 0))
         screen.blit(maxed_text2, (text_x, upgrade_y2 + 90))
+    info_rect2 = pygame.Rect(upgrade_rect2.right - 36, upgrade_rect2.y + 10, 26, 26)
+    pygame.draw.rect(screen, (30, 30, 30), info_rect2)
+    i_text2 = font_tab.render('i', True, WHITE)
+    screen.blit(i_text2, i_text2.get_rect(center=info_rect2.center))
+    info_button_rects.append(('building', 'eater_premium', info_rect2))
     upgrade_rects.append(('eater_premium', upgrade_rect2))
     
     if max_donuts >= 5000:
@@ -1371,8 +1448,7 @@ def draw_buildings_upgrades(menu_x):
             bg_color3 = BROWN_LIGHT if hover3 else (120, 90, 60)
         else:
             bg_color3 = BROWN_DARK
-        pygame.draw.rect(screen, bg_color3, upgrade_rect3)
-        pygame.draw.rect(screen, BLACK, upgrade_rect3, 6)
+        draw_pixel_rect(screen, upgrade_rect3, bg_color3, BLACK, 6)
         
         icon_y3 = upgrade_y3 + 10
         if donut_house_icon:
@@ -1393,6 +1469,10 @@ def draw_buildings_upgrades(menu_x):
         else:
             maxed_text3 = font_upgrade_name.render("MAX", True, (255, 215, 0))
             screen.blit(maxed_text3, (text_x, upgrade_y3 + 90))
+        info_rect3 = pygame.Rect(upgrade_rect3.right - 36, upgrade_rect3.y + 10, 26, 26)
+        pygame.draw.rect(screen, (30, 30, 30), info_rect3)
+        screen.blit(font_tab.render('i', True, WHITE), font_tab.render('i', True, WHITE).get_rect(center=info_rect3.center))
+        info_button_rects.append(('building', 'donut_house', info_rect3))
         upgrade_rects.append(('donut_house', upgrade_rect3))
     
     if max_donuts >= 50000:
@@ -1407,8 +1487,7 @@ def draw_buildings_upgrades(menu_x):
             bg_color4 = BROWN_LIGHT if hover4 else (120, 90, 60)
         else:
             bg_color4 = BROWN_DARK
-        pygame.draw.rect(screen, bg_color4, upgrade_rect4)
-        pygame.draw.rect(screen, BLACK, upgrade_rect4, 6)
+        draw_pixel_rect(screen, upgrade_rect4, bg_color4, BLACK, 6)
         
         icon_y4 = upgrade_y4 + 10
         if donut_eating_hall_icon:
@@ -1429,6 +1508,10 @@ def draw_buildings_upgrades(menu_x):
         else:
             maxed_text4 = font_upgrade_name.render("MAX", True, (255, 215, 0))
             screen.blit(maxed_text4, (text_x, upgrade_y4 + 90))
+        info_rect4 = pygame.Rect(upgrade_rect4.right - 36, upgrade_rect4.y + 10, 26, 26)
+        pygame.draw.rect(screen, (30, 30, 30), info_rect4)
+        screen.blit(font_tab.render('i', True, WHITE), font_tab.render('i', True, WHITE).get_rect(center=info_rect4.center))
+        info_button_rects.append(('building', 'donut_eating_hall', info_rect4))
         upgrade_rects.append(('donut_eating_hall', upgrade_rect4))
     
     if max_donuts >= 500000:
@@ -1443,8 +1526,7 @@ def draw_buildings_upgrades(menu_x):
             bg_color5 = BROWN_LIGHT if hover5 else (120, 90, 60)
         else:
             bg_color5 = BROWN_DARK
-        pygame.draw.rect(screen, bg_color5, upgrade_rect5)
-        pygame.draw.rect(screen, BLACK, upgrade_rect5, 6)
+        draw_pixel_rect(screen, upgrade_rect5, bg_color5, BLACK, 6)
         
         icon_y5 = upgrade_y5 + 10
         if donut_co_icon:
@@ -1465,7 +1547,49 @@ def draw_buildings_upgrades(menu_x):
         else:
             maxed_text5 = font_upgrade_name.render("MAX", True, (255, 215, 0))
             screen.blit(maxed_text5, (text_x, upgrade_y5 + 90))
+        info_rect5 = pygame.Rect(upgrade_rect5.right - 36, upgrade_rect5.y + 10, 26, 26)
+        pygame.draw.rect(screen, (30, 30, 30), info_rect5)
+        screen.blit(font_tab.render('i', True, WHITE), font_tab.render('i', True, WHITE).get_rect(center=info_rect5.center))
+        info_button_rects.append(('building', 'donut_co', info_rect5))
         upgrade_rects.append(('donut_co', upgrade_rect5))
+    if max_donuts >= 50000000:
+        upgrade_y6 = upgrade_y5 + upgrade_height + upgrade_spacing if max_donuts >= 500000 else upgrade_y4 + upgrade_height + upgrade_spacing if max_donuts >= 50000 else upgrade_y3 + upgrade_height + upgrade_spacing if max_donuts >= 5000 else upgrade_y2 + upgrade_height + upgrade_spacing
+        upgrade_rect6 = pygame.Rect(upgrade_x, upgrade_y6, upgrade_width, upgrade_height)
+        donut_nation_cost = get_donut_nation_cost()
+        can_afford6 = points >= donut_nation_cost and donut_nation_count < DONUT_NATION_MAX
+        hover6 = upgrade_rect6.collidepoint(pygame.mouse.get_pos())
+        if donut_nation_count >= DONUT_NATION_MAX:
+            bg_color6 = (100, 100, 100)
+        elif can_afford6:
+            bg_color6 = BROWN_LIGHT if hover6 else (120, 90, 60)
+        else:
+            bg_color6 = BROWN_DARK
+        draw_pixel_rect(screen, upgrade_rect6, bg_color6, BLACK, 6)
+
+        icon_y6 = upgrade_y6 + 10
+        if donut_nation_icon:
+            screen.blit(donut_nation_icon, (icon_x, icon_y6))
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), (icon_x, icon_y6, icon_size, icon_size))
+        pygame.draw.rect(screen, BLACK, (icon_x, icon_y6, icon_size, icon_size), 3)
+
+        name_text6 = font_upgrade_name.render("Donut Nation", True, WHITE)
+        screen.blit(name_text6, (text_x, upgrade_y6 + 10))
+        desc_text6 = font_upgrade_desc.render(f"+{DONUT_NATION_DPS} donuts/sec", True, WHITE)
+        screen.blit(desc_text6, (text_x, upgrade_y6 + 45))
+        count_text6 = font_upgrade_desc.render(f"Owned: {donut_nation_count}/{DONUT_NATION_MAX}", True, WHITE)
+        screen.blit(count_text6, (text_x, upgrade_y6 + 70))
+        if donut_nation_count < DONUT_NATION_MAX:
+            cost_text6 = font_upgrade_name.render(f"Cost: {format_number(donut_nation_cost)}", True, WHITE if can_afford6 else (255, 100, 100))
+            screen.blit(cost_text6, (text_x, upgrade_y6 + 90))
+        else:
+            maxed_text6 = font_upgrade_name.render("MAX", True, (255, 215, 0))
+            screen.blit(maxed_text6, (text_x, upgrade_y6 + 90))
+        info_rect6 = pygame.Rect(upgrade_rect6.right - 36, upgrade_rect6.y + 10, 26, 26)
+        pygame.draw.rect(screen, (30, 30, 30), info_rect6)
+        screen.blit(font_tab.render('i', True, WHITE), font_tab.render('i', True, WHITE).get_rect(center=info_rect6.center))
+        info_button_rects.append(('building', 'donut_nation', info_rect6))
+        upgrade_rects.append(('donut_nation', upgrade_rect6))
     
     return upgrade_rects
 
@@ -1581,7 +1705,42 @@ def draw_upgrades_upgrades(menu_x):
         cost_text3 = font_upgrade_name.render(f"Cost: {format_number(GASTRO_PILL_COST)}", True, WHITE if can_afford3 else (255, 100, 100))
         screen.blit(cost_text3, (text_x, upgrade_y + 90))
         
+        info_rect_gp = pygame.Rect(upgrade_rect3.right - 36, upgrade_rect3.y + 10, 26, 26)
+        pygame.draw.rect(screen, (30, 30, 30), info_rect_gp)
+        screen.blit(font_tab.render('i', True, WHITE), font_tab.render('i', True, WHITE).get_rect(center=info_rect_gp.center))
+        info_button_rects.append(('upgrade', 'gastro_pill', info_rect_gp))
         upgrade_rects.append(('gastro_pill', upgrade_rect3))
+        upgrade_y += upgrade_height + upgrade_spacing
+
+    if not saturation_unlocked:
+        upgrade_rect4 = pygame.Rect(upgrade_x, upgrade_y, upgrade_width, upgrade_height)
+        can_afford4 = points >= SATURATION_COST
+        hover4 = upgrade_rect4.collidepoint(pygame.mouse.get_pos())
+
+        if can_afford4:
+            bg_color4 = BROWN_LIGHT if hover4 else (120, 90, 60)
+        else:
+            bg_color4 = BROWN_DARK
+
+        pygame.draw.rect(screen, bg_color4, upgrade_rect4)
+        pygame.draw.rect(screen, BLACK, upgrade_rect4, 6)
+
+        icon_y4 = upgrade_y + 10
+        if saturation_icon:
+            screen.blit(saturation_icon, (icon_x, icon_y4))
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), (icon_x, icon_y4, icon_size, icon_size))
+        pygame.draw.rect(screen, BLACK, (icon_x, icon_y4, icon_size, icon_size), 3)
+
+        text_x = upgrade_x + 120
+        name_text4 = font_upgrade_name.render("Saturation", True, WHITE)
+        screen.blit(name_text4, (text_x, upgrade_y + 10))
+        desc_text4 = font_upgrade_desc.render("+100 donuts per click", True, WHITE)
+        screen.blit(desc_text4, (text_x, upgrade_y + 45))
+        cost_text4 = font_upgrade_name.render(f"Cost: {format_number(SATURATION_COST)}", True, WHITE if can_afford4 else (255, 100, 100))
+        screen.blit(cost_text4, (text_x, upgrade_y + 90))
+
+        upgrade_rects.append(('saturation', upgrade_rect4))
     
     return upgrade_rects
 
@@ -1687,76 +1846,77 @@ def draw_inventory_tab(menu_x):
 def  draw_store_upgrades_box():
     global store_upgrades_box_rect, do_bucks
 
-    box_width = 550
-    box_height = 140
+    box_width = 700
+    box_height = 120
     box_x = (WIDTH - box_width) // 2
-    start_box_y = 280
+    start_box_y = 310
+    card_gap = 10
 
     mouse_pos = pygame.mouse.get_pos()
 
     for i, (item_key, item) in enumerate(items.ITEMS.items()):
-        box_y = start_box_y + i * (box_height + 15)
+        box_y = start_box_y + i * (box_height + card_gap)
         store_upgrades_box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
 
         if item.unlocked:
-            box_bg_color = (60, 60, 60)  # Dark gray for owned items
-            border_color = (100, 100, 100)
-            name_color = (150, 150, 150)  # Grayed out name
-        else:
-            box_bg_color = (255, 245, 220)  # Light cream background
-            border_color = (255, 215, 0)  # Gold border for available items
+            box_bg_color = (70, 70, 70)
+            border_color = (140, 140, 140)
+            name_color = (200, 200, 200)
+        elif do_bucks >= item.cost:
+            box_bg_color = (255, 248, 220)
+            border_color = (255, 215, 0)
             name_color = WHITE
+        else:
+            box_bg_color = (240, 225, 205)
+            border_color = (170, 120, 80)
+            name_color = (80, 60, 50)
 
         pygame.draw.rect(screen, box_bg_color, store_upgrades_box_rect)
         pygame.draw.rect(screen, border_color, store_upgrades_box_rect, 3)
 
-        pygame.draw.line(screen, (200, 200, 200), (box_x + 5, box_y + 5), (box_x + box_width - 5, box_y + 5), 1)
-
-        icon_size = 50
-        icon_x = box_x + 15
+        icon_size = 58
+        icon_x = box_x + 18
         icon_y = box_y + (box_height - icon_size) // 2
 
         if item.id == "classic_donut":
-            icon_color = (210, 180, 140)  # Classic donut color
+            icon_color = (210, 180, 140)
         elif item.id == "chocolate_donut":
-            icon_color = (101, 67, 33)  # Brown
+            icon_color = (101, 67, 33)
         elif item.id == "strawberry_donut":
-            icon_color = (255, 105, 180)  # Pink
+            icon_color = (255, 105, 180)
         elif item.id == "sprinkles_donut":
-            icon_color = (255, 182, 193)  # Light pink
+            icon_color = (255, 182, 193)
         else:
             icon_color = (200, 200, 200)
 
         pygame.draw.circle(screen, icon_color, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2)
         pygame.draw.circle(screen, BLACK, (icon_x + icon_size // 2, icon_y + icon_size // 2), icon_size // 2, 2)
 
-        pygame.draw.circle(screen, box_bg_color, (icon_x + icon_size // 2, icon_y + icon_size // 2), 10)
-
         name_text = font_upgrade_name.render(item.name, True, name_color)
-        name_rect = name_text.get_rect(x=box_x + 90, y=box_y + 15)
+        name_rect = name_text.get_rect(x=box_x + 100, y=box_y + 18)
         screen.blit(name_text, name_rect)
 
         desc_text = font_upgrade_desc.render(item.description, True, (120, 120, 120))
-        desc_rect = desc_text.get_rect(x=box_x + 90, y=box_y + 45)
+        desc_rect = desc_text.get_rect(x=box_x + 100, y=box_y + 46)
         screen.blit(desc_text, desc_rect)
 
         cost_text = font_upgrade_desc.render(f"{item.cost} DOB", True, (255, 215, 0))
-        cost_rect = cost_text.get_rect(x=box_x + 90, y=box_y + 75)
+        cost_rect = cost_text.get_rect(x=box_x + 100, y=box_y + 74)
         screen.blit(cost_text, cost_rect)
 
-        buy_button_width = 110
-        buy_button_height = 45
-        buy_button_x = box_x + box_width - buy_button_width - 12
+        buy_button_width = 120
+        buy_button_height = 48
+        buy_button_x = box_x + box_width - buy_button_width - 15
         buy_button_y = box_y + (box_height - buy_button_height) // 2
 
         buy_button_rect = pygame.Rect(buy_button_x, buy_button_y, buy_button_width, buy_button_height)
 
         if item.unlocked:
-            button_color = (80, 80, 80)  # Gray for owned
+            button_color = (90, 90, 90)
             button_text = "OWNED"
-            text_color = (150, 150, 150)
+            text_color = (180, 180, 180)
         elif buy_button_rect.collidepoint(mouse_pos):
-            button_color = (100, 255, 100)  # Bright green on hover
+            button_color = (100, 255, 100)
             button_text = "BUY"
             text_color = BLACK
         else:
@@ -1764,8 +1924,8 @@ def  draw_store_upgrades_box():
             button_text = "BUY"
             text_color = WHITE
 
-        pygame.draw.rect(screen, button_color, buy_button_rect, border_radius=8)
-        pygame.draw.rect(screen, BLACK, buy_button_rect, 2, border_radius=8)
+        pygame.draw.rect(screen, button_color, buy_button_rect)
+        pygame.draw.rect(screen, BLACK, buy_button_rect, 2)
 
         buy_text = font_upgrade_desc.render(button_text, True, text_color)
         buy_text_rect = buy_text.get_rect(center=buy_button_rect.center)
@@ -1807,7 +1967,17 @@ subtab_rects = []
 achievement_rects = []
 last_time = pygame.time.get_ticks()
 last_save_time = pygame.time.get_ticks()
-SAVE_INTERVAL = 10000  # 10 sekund
+# Autosave every 60 seconds (was 10s)
+SAVE_INTERVAL = 60_000
+scale_animating = False
+scale_direction = 0
+PEAK_SCALE = 1.05
+scale_hold_time = 0.003
+scale_hold_timer = 0.0
+scale_velocity = 0.0
+scale_k = 960.0
+scale_c = 2.0 * (scale_k ** 0.5)
+scale_max_vel = 80.0
 
 while running:
     screen.fill(PINK_BG)
@@ -1838,24 +2008,63 @@ while running:
         'current_dps': current_dps
     }
     newly_unlocked = check_all_achievements(None, stats)  # Wrapper używa check_achievements()
-    
-    if newly_unlocked and not show_achievement_notification:
-        show_achievement_notification = True
-        achievement_to_show = newly_unlocked[0]  # Pokaż pierwsze osiągnięcie
-        achievement_notification_timer = 0
+    if newly_unlocked:
+        achievements_queue.extend(newly_unlocked)
+        if not show_achievement_notification and achievements_queue:
+            show_achievement_notification = True
+            achievement_to_show = achievements_queue.pop(0)
+            achievement_notification_timer = 0
     
     if show_achievement_notification:
         achievement_notification_timer += delta_time * 1000  # Konwersja na milisekundy
         if achievement_notification_timer >= ACHIEVEMENT_NOTIFICATION_DURATION:
-            show_achievement_notification = False
-            achievement_to_show = None
             achievement_notification_timer = 0
+            if achievements_queue:
+                achievement_to_show = achievements_queue.pop(0)
+                show_achievement_notification = True
+            else:
+                show_achievement_notification = False
+                achievement_to_show = None
     
     if current_time - last_save_time > SAVE_INTERVAL:
         save_game()
         last_save_time = current_time
     
     for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = pygame.mouse.get_pos()
+            
+            if description_modal_open:
+                description_modal_open = False
+                description_modal_content = None
+                continue
+            # quick-exit button handling: immediate save & quit
+            if exit_button_rect and exit_button_rect.collidepoint(mx, my):
+                save_game()
+                pygame.quit()
+                sys.exit()
+                continue
+            
+            for itype, iid, irect in info_button_rects:
+                if irect and irect.collidepoint(mx, my):
+                    if itype == 'building' and iid in upgrades.BUILDINGS:
+                        b = upgrades.BUILDINGS[iid]
+                        description_modal_content = {
+                            'title': b.name,
+                            'text': f"Cost: {format_number(b.base_cost)}\nDPS: {b.dps}\nMax: {b.max_count}"
+                        }
+                        description_modal_open = True
+                        break
+                    elif itype == 'upgrade' and iid in upgrades.UPGRADES:
+                        u = upgrades.UPGRADES[iid]
+                        description_modal_content = {
+                            'title': u.name,
+                            'text': f"{u.description}\nCost: {format_number(u.get_cost())}"
+                        }
+                        description_modal_open = True
+                        break
+            if description_modal_open:
+                continue
         if event.type == pygame.QUIT:
             save_game()
             running = False
@@ -1979,14 +2188,12 @@ while running:
                         click_sound.set_volume(sound_settings['volume'])
                     print(f"Volume: {int(sound_settings['volume'] * 100)}%")
                 elif settings_vol_bar_rect and settings_vol_bar_rect.collidepoint(mouse_x, mouse_y):
-                    # Kliknięcie bezpośrednio w pasek
                     rel_x = mouse_x - sound_settings['bar_x']
                     sound_settings['volume'] = max(0.0, min(1.0, rel_x / sound_settings['bar_w']))
                     sound_settings['volume'] = round(sound_settings['volume'], 2)
                     if click_sound:
                         click_sound.set_volume(sound_settings['volume'])
                     sound_settings['dragging'] = True
-                # Przyciski muzyki
                 elif settings_music_minus_rect and settings_music_minus_rect.collidepoint(mouse_x, mouse_y):
                     music_settings['volume'] = max(0.0, round(music_settings['volume'] - 0.1, 1))
                     pygame.mixer.music.set_volume(music_settings['volume'])
@@ -1996,14 +2203,12 @@ while running:
                     pygame.mixer.music.set_volume(music_settings['volume'])
                     print(f"Music volume: {int(music_settings['volume'] * 100)}%")
                 elif settings_music_bar_rect and settings_music_bar_rect.collidepoint(mouse_x, mouse_y):
-                    # Kliknięcie w pasek muzyki
                     rel_x = mouse_x - music_settings['bar_x']
                     music_settings['volume'] = max(0.0, min(1.0, rel_x / music_settings['bar_w']))
                     music_settings['volume'] = round(music_settings['volume'], 2)
                     pygame.mixer.music.set_volume(music_settings['volume'])
                     music_settings['dragging'] = True
                 elif settings_music_checkbox_rect and settings_music_checkbox_rect.collidepoint(mouse_x, mouse_y):
-                    # Toggle muzyki ON/OFF
                     music_settings['enabled'] = not music_settings['enabled']
                     if music_settings['enabled']:
                         pygame.mixer.music.unpause()
@@ -2035,11 +2240,10 @@ while running:
                         clicked_tab = True
                         break
                 
-                # Obsługa kliknięć w osiągnięcia (gdy jesteśmy w zakładce Achievements)
                 if not clicked_tab and active_tab == 1 and achievement_rects:
                     for achievement, achievement_rect in achievement_rects:
                         if achievement_rect.collidepoint(mouse_x, mouse_y):
-                            # Otwórz okno szczegółów osiągnięcia
+                            
                             achievement_detail_window_open = True
                             achievement_detail_to_show = achievement
                             break
@@ -2055,31 +2259,30 @@ while running:
                     if not clicked_subtab and upgrade_rects:
                         for upgrade_type, upgrade_rect in upgrade_rects:
                             if upgrade_rect.collidepoint(mouse_x, mouse_y):
-                                if upgrade_type == 'eater':
-                                    eater_cost = get_eater_cost()
-                                    if points >= eater_cost and eater_count < EATER_MAX:
-                                        points -= eater_cost
-                                        eater_count += 1
-                                elif upgrade_type == 'eater_premium':
-                                    eater_premium_cost = get_eater_premium_cost()
-                                    if points >= eater_premium_cost and eater_premium_count < EATER_PREMIUM_MAX:
-                                        points -= eater_premium_cost
-                                        eater_premium_count += 1
-                                elif upgrade_type == 'donut_house':
-                                    donut_house_cost = get_donut_house_cost()
-                                    if points >= donut_house_cost and donut_house_count < DONUT_HOUSE_MAX:
-                                        points -= donut_house_cost
-                                        donut_house_count += 1
-                                elif upgrade_type == 'donut_eating_hall':
-                                    donut_eating_hall_cost = get_donut_eating_hall_cost()
-                                    if points >= donut_eating_hall_cost and donut_eating_hall_count < DONUT_EATING_HALL_MAX:
-                                        points -= donut_eating_hall_cost
-                                        donut_eating_hall_count += 1
-                                elif upgrade_type == 'donut_co':
-                                    donut_co_cost = get_donut_co_cost()
-                                    if points >= donut_co_cost and donut_co_count < DONUT_CO_MAX:
-                                        points -= donut_co_cost
-                                        donut_co_count += 1
+                                
+                                if upgrade_type in upgrades.BUILDINGS:
+                                    building = upgrades.BUILDINGS[upgrade_type]
+                                    cost = building.get_cost()
+                                    if points >= cost and building.count < building.max_count:
+                                        
+                                        paid = building.buy(points)
+                                        points -= paid
+                                        
+                                        try:
+                                            if upgrade_type == 'eater':
+                                                eater_count = building.count
+                                            elif upgrade_type == 'eater_premium':
+                                                eater_premium_count = building.count
+                                            elif upgrade_type == 'donut_house':
+                                                donut_house_count = building.count
+                                            elif upgrade_type == 'donut_eating_hall':
+                                                donut_eating_hall_count = building.count
+                                            elif upgrade_type == 'donut_co':
+                                                donut_co_count = building.count
+                                            elif upgrade_type == 'donut_nation':
+                                                donut_nation_count = building.count
+                                        except Exception:
+                                            pass
                                 elif upgrade_type == 'eating_power':
                                     eating_power_cost = get_eating_power_cost()
                                     if points >= eating_power_cost:
@@ -2096,14 +2299,19 @@ while running:
                                         points -= GASTRO_PILL_COST
                                         gastro_pill_unlocked = True
                                         print("Gastro Pill unlocked! +30% clicks bonus!")
+                                elif upgrade_type == 'saturation':
+                                    if points >= SATURATION_COST and not saturation_unlocked:
+                                        points -= SATURATION_COST
+                                        saturation_unlocked = True
+                                        print("Saturation unlocked! +100 donuts per click")
                                 break
             elif store_window_open:
-                # Check if clicked on convert button
+                
                 if convert_button_rect and convert_button_rect.collidepoint(mouse_x, mouse_y):
                     convert_donuts_to_bucks()
                     continue
 
-                # Check if clicked on any item buy button
+                
                 for item_key, item in items.ITEMS.items():
                     if hasattr(item, 'buy_button_rect') and item.buy_button_rect.collidepoint(mouse_x, mouse_y):
                         if not item.unlocked:
@@ -2116,8 +2324,10 @@ while running:
                 menu_open = not menu_open
                 menu_target_x = WIDTH - MENU_WIDTH if menu_open else WIDTH
             elif exit_button_rect.collidepoint(mouse_x, mouse_y):
+                # Immediate exit when clicking the red X
                 save_game()
-                running = False
+                pygame.quit()
+                sys.exit()
             else:
                 center_x = WIDTH // 2
                 center_y = HEIGHT // 2 + 50
@@ -2126,9 +2336,15 @@ while running:
                     clicks_to_add = get_clicks_per_click()
                     points += clicks_to_add
                     total_donuts_earned += clicks_to_add
-                    target_scale = 0.90
+                    donut_press_strength = 1.0
                     
-                    # TUTAJ: Odtwórz dźwięk kliknięcia (tylko jeśli włączony)
+                    target_scale = PEAK_SCALE
+                    scale_animating = True
+                    scale_direction = 1
+                    scale_hold_timer = scale_hold_time
+                    scale_velocity = 0.0
+                    
+                    
                     if click_sound and sound_settings['enabled']:
                         click_sound.play()
     
@@ -2149,16 +2365,6 @@ while running:
         settings_x -= 30
         if settings_x < settings_target_x:
             settings_x = settings_target_x
-    
-    if donut_scale < target_scale:
-        donut_scale += 0.02
-    elif donut_scale > 1.0:
-        donut_scale -= 0.02
-        if donut_scale < 1.0:
-            donut_scale = 1.0
-    else:
-        donut_scale = 1.0
-        target_scale = 1.0
     
     mouse_x, mouse_y = pygame.mouse.get_pos()
     center_x = WIDTH // 2
@@ -2202,18 +2408,56 @@ while running:
     else:
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
     
-    new_width = int(original_size[0] * donut_scale)
-    new_height = int(original_size[1] * donut_scale)
+    
+    if scale_animating:
+        desired = target_scale
+        
+        accel = -scale_k * (donut_scale - desired) - scale_c * scale_velocity
+        scale_velocity += accel * delta_time
+        
+        if scale_velocity > scale_max_vel:
+            scale_velocity = scale_max_vel
+        elif scale_velocity < -scale_max_vel:
+            scale_velocity = -scale_max_vel
+        donut_scale += scale_velocity * delta_time
+        
+        if donut_scale < 0.5:
+            donut_scale = 0.5
+            scale_velocity = 0.0
+        elif donut_scale > 2.0:
+            donut_scale = 2.0
+            scale_velocity = 0.0
+
+        
+        if scale_direction == 1:
+            
+            if abs(donut_scale - desired) < 0.002 and abs(scale_velocity) < 0.01:
+                scale_direction = -1
+                target_scale = 1.0
+                scale_hold_timer = scale_hold_time
+                scale_velocity = 0.0
+        elif scale_direction == -1:
+            if scale_hold_timer > 0:
+                scale_hold_timer -= delta_time
+            else:
+                if abs(donut_scale - target_scale) < 0.002 and abs(scale_velocity) < 0.01:
+                    donut_scale = target_scale
+                    scale_animating = False
+                    scale_direction = 0
+                    scale_velocity = 0.0
+
+    new_width = max(1, int(original_size[0] * donut_scale))
+    new_height = max(1, int(original_size[1] * donut_scale))
     scaled_donut = pygame.transform.scale(donut_image, (new_width, new_height))
     scaled_rect = scaled_donut.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
     donut_rect = scaled_rect
-    
+
     points_formatted = format_number(points)
     text_surface = font_pixel.render(points_formatted, True, LIGHT_YELLOW)
     text_rect = text_surface.get_rect(center=(WIDTH // 2, 120))
     screen.blit(text_surface, text_rect)
     
-    current_dps = eater_count * EATER_DPS + eater_premium_count * EATER_PREMIUM_DPS + donut_house_count * DONUT_HOUSE_DPS + donut_eating_hall_count * DONUT_EATING_HALL_DPS + donut_co_count * DONUT_CO_DPS
+    current_dps = upgrades.get_total_dps(upgrades.BUILDINGS)
     dps_text = f"DPS: {current_dps:.1f}"
     dps_render = font_dps.render(dps_text, True, LIGHT_YELLOW)
     dps_position = dps_render.get_rect(center=(WIDTH // 2, 200))
@@ -2250,11 +2494,10 @@ while running:
 
         draw_store_upgrades_box()
     
-    # Okno idle - rysowane na samym wierzchu
     idle_ok_button = None
     if idle_window_open:
         idle_ok_button = draw_idle_window()
-        # Sprawdź czy kliknięto przycisk OK
+        
         if pygame.mouse.get_pressed()[0] and idle_ok_button:
             mouse_pos = pygame.mouse.get_pos()
             if idle_ok_button.collidepoint(mouse_pos):
@@ -2270,18 +2513,17 @@ while running:
     elif code_input_active:
         draw_code_input()
     
-    # Rysuj powiadomienie osiągnięcia (na samym wierzchu wszystkiego)
     achievement_notification_rect = None
     if show_achievement_notification and achievement_to_show:
         achievement_notification_rect = draw_achievement_notification(
             achievement_to_show, 
             achievement_notification_timer
         )
-        # Sprawdź czy kliknięto w powiadomienie
+        
         if pygame.mouse.get_pressed()[0] and achievement_notification_rect:
             mouse_pos = pygame.mouse.get_pos()
             if achievement_notification_rect.collidepoint(mouse_pos):
-                # Otwórz menu osiągnięć
+                
                 menu_open = True
                 menu_target_x = WIDTH - MENU_WIDTH
                 active_tab = 1  # Tab Achievements (indeks 1)
@@ -2289,21 +2531,76 @@ while running:
                 achievement_to_show = None
                 achievement_notification_timer = 0
                 pygame.time.wait(200)  # Małe opóźnienie
+                if achievements_queue:
+                    show_achievement_notification = True
+                    achievement_to_show = achievements_queue.pop(0)
     
-    # Rysuj okno szczegółów osiągnięcia (na samym wierzchu - nad wszystkim)
     achievement_detail_close_button = None
     if achievement_detail_window_open and achievement_detail_to_show:
         achievement_detail_close_button = draw_achievement_detail_window(achievement_detail_to_show)
-        # Sprawdź czy kliknięto przycisk Close
+        
         if pygame.mouse.get_pressed()[0] and achievement_detail_close_button:
             mouse_pos = pygame.mouse.get_pos()
             if achievement_detail_close_button.collidepoint(mouse_pos):
                 achievement_detail_window_open = False
                 achievement_detail_to_show = None
                 pygame.time.wait(200)  # Małe opóźnienie
+
+    
+        if description_modal_open and description_modal_content:
+            w = 600
+            h = 300
+            x = WIDTH//2 - w//2
+            y = HEIGHT//2 - h//2
+            rect = pygame.Rect(x, y, w, h)
+            pygame.draw.rect(screen, (40, 40, 40), rect)
+            pygame.draw.rect(screen, BLACK, rect, 4)
+            title = font_upgrade_name.render(description_modal_content.get('title',''), True, WHITE)
+            screen.blit(title, (x+20, y+20))
+            lines = description_modal_content.get('text','').split('\n')
+            for i, line in enumerate(lines):
+                t = font_upgrade_desc.render(line, True, WHITE)
+                screen.blit(t, (x+20, y+70 + i*30))
+
+    
+        if exit_confirmation_open:
+            w = 500
+            h = 200
+            x = WIDTH//2 - w//2
+            y = HEIGHT//2 - h//2
+            rect = pygame.Rect(x, y, w, h)
+            pygame.draw.rect(screen, (50,50,50), rect)
+            pygame.draw.rect(screen, BLACK, rect, 4)
+            text = font_upgrade_name.render('Exit game? Save and quit?', True, WHITE)
+            screen.blit(text, (x+20, y+30))
+        
+            yes_rect = pygame.Rect(x+60, y+110, 140, 50)
+            no_rect = pygame.Rect(x+300, y+110, 140, 50)
+            pygame.draw.rect(screen, DARK_GREEN, yes_rect)
+            pygame.draw.rect(screen, (150,0,0), no_rect)
+            yes_text = font_button.render('Yes', True, WHITE)
+            no_text = font_button.render('No', True, WHITE)
+            screen.blit(yes_text, yes_text.get_rect(center=yes_rect.center))
+            screen.blit(no_text, no_text.get_rect(center=no_rect.center))
     
     pygame.display.flip()
     clock.tick(60)
+    
+    if exit_confirmation_open and pygame.mouse.get_pressed()[0]:
+        mx, my = pygame.mouse.get_pos()
+        
+        w = 500
+        h = 200
+        x = WIDTH//2 - w//2
+        y = HEIGHT//2 - h//2
+        yes_rect = pygame.Rect(x+60, y+110, 140, 50)
+        no_rect = pygame.Rect(x+300, y+110, 140, 50)
+        if yes_rect.collidepoint(mx, my):
+            save_game()
+            pygame.quit()
+            sys.exit()
+        elif no_rect.collidepoint(mx, my):
+            exit_confirmation_open = False
 
 save_game()
 pygame.quit()

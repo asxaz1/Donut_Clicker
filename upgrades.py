@@ -6,12 +6,14 @@ BUILDING_TEXTURES = {
     "donut_house": None,
     "donut_eating_hall": None,
     "donut_co": None
+    ,"donut_nation": None
 }
 
 UPGRADE_TEXTURES = {
     "eating_power": None,
     "store": None,
     "gastro_pill": None
+    ,"saturation": None
 }
 
 
@@ -89,7 +91,7 @@ BUILDINGS = {
         id="eater_premium",
         name="Eater Premium",
         base_cost=1000,
-        dps=2.5,
+        dps=25.0,
         max_count=10,
         cost_multiplier=1.08
     ),
@@ -97,7 +99,7 @@ BUILDINGS = {
         id="donut_house",
         name="Donut House",
         base_cost=10000,
-        dps=5.0,
+        dps=100.0,
         max_count=10,
         cost_multiplier=1.1
     ),
@@ -105,7 +107,7 @@ BUILDINGS = {
         id="donut_eating_hall",
         name="Donut Eating Hall",
         base_cost=100000,
-        dps=10.0,
+        dps=600.0,
         max_count=25,
         cost_multiplier=1.12
     ),
@@ -113,9 +115,18 @@ BUILDINGS = {
         id="donut_co",
         name="Donut Corporation",
         base_cost=1000000,
-        dps=100.0,
+        dps=2250.0,
         max_count=10,
         cost_multiplier=1.08
+    )
+
+    ,"donut_nation": Building(
+        id="donut_nation",
+        name="Donut Nation",
+        base_cost=100000000,
+        dps=10000.0,
+        max_count=10,
+        cost_multiplier=1.09
     )
 }
 
@@ -140,6 +151,13 @@ UPGRADES = {
         name="Gastro Pill",
         description="Zwiększa pojemność żołądka (odblokowuje nowe budynki)",
         cost=1000,
+        max_level=1
+    )
+    ,"saturation": Upgrade(
+        id="saturation",
+        name="Saturation",
+        description="+100 donuts per click",
+        cost=2500,
         max_level=1
     )
 }

@@ -22,7 +22,9 @@ class Achievement:
         self.unlocked: bool = False
 
     def check_unlock(self, total_donuts: int) -> bool:
-        if not self.unlocked and int(total_donuts) >= self.requirement:
+        if self.unlocked:
+            return False
+        if int(total_donuts) >= self.requirement:
             self.unlocked = True
             return True
         return False

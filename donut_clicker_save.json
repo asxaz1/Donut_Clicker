@@ -1,35 +1,63 @@
 {
-    "points": 5,
-    "do_bucks": 744,
+    "points": 98482969411.84187,
+    "do_bucks": 659,
     "overall_do_bucks_earned": 0,
-    "max_donuts": 502,
-    "max_dps": 0,
-    "time_played": 4.285,
+    "max_donuts": 100000000001,
+    "max_dps": 128200.0,
+    "time_played": 4.959,
     "eater_count": 0,
     "eater_premium_count": 0,
-    "donut_house_count": 0,
-    "donut_eating_hall_count": 0,
-    "donut_co_count": 0,
-    "total_donuts_earned": 505,
-    "total_time_played": 262.2669999999632,
+    "donut_house_count": 9,
+    "donut_eating_hall_count": 8,
+    "donut_co_count": 1,
+    "total_donuts_earned": 100019218925.84187,
+    "total_time_played": 2588.5510000025047,
     "store_unlocked": true,
     "eating_power_level": 0,
     "gastro_pill_unlocked": false,
     "sound_enabled": true,
-    "sound_volume": 0.5,
+    "sound_volume": 0.4,
     "music_enabled": true,
-    "music_volume": 0.3,
+    "music_volume": 0.8,
     "achievements": {
         "first_donut": true,
         "donut_collector": true,
-        "donut_hoarder": false,
-        "donut_master": false,
-        "donut_legend": false,
-        "donut_god": false,
-        "donut_millionaire": false,
-        "donut_billionaire": false,
+        "donut_hoarder": true,
+        "donut_master": true,
+        "donut_legend": true,
+        "donut_god": true,
+        "donut_millionaire": true,
+        "donut_billionaire": true,
         "donut_trillionaire": false
     },
-    "last_exit_time": "2026-04-03T10:52:53.609598",
-    "exit_dps": 0.0
+    "last_exit_time": "2026-09-06T14:50:21.210116",
+    "exit_dps": 7950.0,
+    "donut_nation_count": 0,
+    "buildings": {
+        "eater": 0,
+        "eater_premium": 0,
+        "donut_house": 9,
+        "donut_eating_hall": 8,
+        "donut_co": 1,
+        "donut_nation": 0
+    },
+    "upgrades": {
+        "eating_power": {
+            "level": 0,
+            "unlocked": false
+        },
+        "store": {
+            "level": 0,
+            "unlocked": false
+        },
+        "gastro_pill": {
+            "level": 0,
+            "unlocked": false
+        },
+        "saturation": {
+            "level": 0,
+            "unlocked": false
+        }
+    },
+    "saturation_unlocked": false
 }
